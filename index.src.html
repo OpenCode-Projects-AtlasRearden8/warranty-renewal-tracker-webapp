@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Warranty &amp; Renewal Tracker</title>
+<style>
+:root {
+  --bg: #f6f7f9; --card: #fff; --ink: #1e2430; --muted: #5d6774;
+  --accent: #2d6cdf; --accent-soft: #e7effc; --border: #dee3ec;
+  --good: #1f8a4d; --warn: #b06f00; --bad: #c0392b; --warnbg: #fdf3e0; --badbg: #fbe9e7;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); line-height: 1.45; }
+header { background: var(--accent); color: #fff; padding: 14px 20px; display: flex; flex-wrap: wrap; gap: 10px; align-items: baseline; }
+header h1 { font-size: 1.2rem; margin: 0; }
+header .tagline { font-size: .85rem; opacity: .85; }
+main { max-width: 980px; margin: 0 auto; padding: 16px; }
+nav.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+nav.tabs button { border: 1px solid var(--border); background: var(--card); padding: 8px 14px; border-radius: 8px 8px 0 0; cursor: pointer; font-size: .95rem; }
+nav.tabs button.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+section.panel { display: none; }
+section.panel.active { display: block; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 12px; }
+.card h3 { margin: 0 0 4px; font-size: 1.05rem; }
+.card .meta { color: var(--muted); font-size: .88rem; margin: 2px 0; }
+.badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .8rem; font-weight: 600; }
+.badge.active { background: var(--accent-soft); color: var(--accent); }
+.badge.upcoming { background: var(--warnbg); color: var(--warn); }
+.badge.soon { background: #fff3cd; color: #7a5600; }
+.badge.expired { background: var(--badbg); color: var(--bad); }
+.badge.none { background: var(--border); color: var(--muted); }
+.countdown { font-size: 1.5rem; font-weight: 700; margin: 6px 0 2px; }
+.countdown.expired { color: var(--bad); }
+.countdown.soon { color: var(--warn); }
+label { display: block; font-size: .85rem; color: var(--muted); margin: 8px 0 2px; }
+input, select, textarea { font: inherit; padding: 7px 9px; border: 1px solid var(--border); border-radius: 6px; width: 100%; background: #fff; color: var(--ink); }
+form fieldset { border: 1px solid var(--border); border-radius: 10px; padding: 4px 14px 14px; margin-bottom: 14px; background: var(--card); }
+button.primary { background: var(--accent); color: #fff; border: 0; padding: 9px 18px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+button.primary:hover { filter: brightness(1.08); }
+button.ghost { background: transparent; border: 1px solid var(--border); padding: 6px 12px; border-radius: 8px; cursor: pointer; color: var(--muted); }
+button.ghost:hover { border-color: var(--accent); color: var(--accent); }
+.row-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+th, td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; font-size: .92rem; }
+th { background: var(--accent-soft); font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+tr:last-child td { border-bottom: 0; }
+.forecast-month { display: flex; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid var(--border); align-items: center; }
+.forecast-month:last-child { border-bottom: 0; }
+.forecast-month.empty { color: var(--muted); }
+.forecast-month strong { font-variant-numeric: tabular-nums; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+@media (max-width: 560px) { .grid2 { grid-template-columns: 1fr; } }
+.hint { font-size: .82rem; color: var(--muted); margin-top: 8px; }
+.sort-controls button { margin-right: 6px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Warranty &amp; Renewal Tracker</h1>
+  <span class="tagline">Offline · local-first · your data never leaves this device</span>
+</header>
+<main>
+  <nav class="tabs" role="tablist">
+    <button class="active" data-tab="warranties" role="tab">Warranties</button>
+    <button data-tab="renewals" role="tab">Renewals</button>
+    <button data-tab="forecast" role="tab">Forecast</button>
+    <button data-tab="export" role="tab">Export</button>
+  </nav>
+
+  <section class="panel active" id="tab-warranties">
+    <form id="warranty-form" autocomplete="off">
+      <fieldset>
+        <legend><strong>Add / edit warranted item</strong></legend>
+        <input type="hidden" id="w-id">
+        <div class="grid2">
+          <div>
+            <label for="w-name">Item name</label>
+            <input id="w-name" required placeholder="e.g. Kitchen fridge">
+            <label for="w-type">Category</label>
+            <select id="w-type">
+              <option>Appliance</option><option>Car</option><option>Phone</option>
+              <option>Electronics</option><option>Other</option>
+            </select>
+            <label for="w-purchase">Purchase date</label>
+            <input id="w-purchase" type="date" required>
+          </div>
+          <div>
+            <label for="w-months">Warranty length — months</label>
+            <input id="w-months" type="number" min="0" placeholder="e.g. 12">
+            <label for="w-days">— or days</label>
+            <input id="w-days" type="number" min="0" placeholder="e.g. 365">
+            <label for="w-loc">Where the document lives</label>
+            <input id="w-loc" placeholder="e.g. kitchen drawer, receipts box">
+            <label for="w-renew">Renewal cost if you renew ($) — optional</label>
+            <input id="w-renew" type="number" min="0" step="0.01" placeholder="e.g. 149.99">
+          </div>
+        </div>
+        <div class="row-actions">
+          <button type="submit" class="primary">Save item</button>
+          <button type="button" class="ghost" id="w-clear">Clear</button>
+        </div>
+        <p class="hint">Enter months <em>or</em> days — leave both blank for “no warranty”. The renewal-cost field adds a line to the Forecast for the month coverage lapses.</p>
+      </fieldset>
+    </form>
+    <p><button class="ghost sort-controls" data-wsort="status">Sort: status</button>
+       <button class="ghost sort-controls" data-wsort="expiry" style="margin-left:0">Sort: expiring first</button>
+       <button class="ghost sort-controls" data-wsort="name" style="margin-left:0">Sort: name</button></p>
+    <div id="warranty-list"></div>
+  </section>
+
+  <section class="panel" id="tab-renewals">
+    <form id="renewal-form" autocomplete="off">
+      <fieldset>
+        <legend><strong>Add / edit renewal</strong></legend>
+        <input type="hidden" id="r-id">
+        <div class="grid2">
+          <div>
+            <label for="r-name">Renewal name</label>
+            <input id="r-name" required placeholder="e.g. Car insurance">
+            <label for="r-type">Type</label>
+            <select id="r-type">
+              <option>Insurance</option><option>Membership</option><option>Service plan</option><option>Other</option>
+            </select>
+            <label for="r-due">Next due date</label>
+            <input id="r-due" type="date" required>
+          </div>
+          <div>
+            <label for="r-cost">Cost ($)</label>
+            <input id="r-cost" type="number" min="0" step="0.01" placeholder="e.g. 120.00">
+            <label for="r-interval">Repeats every (months)</label>
+            <input id="r-interval" type="number" min="0" placeholder="e.g. 12 = yearly, blank = one-time">
+            <label for="r-note">Document location / note</label>
+            <input id="r-note" placeholder="e.g. policy in email, folder 'Auto'">
+          </div>
+        </div>
+        <div class="row-actions">
+          <button type="submit" class="primary">Save renewal</button>
+          <button type="button" class="ghost" id="r-clear">Clear</button>
+        </div>
+        <p class="hint">“Mark renewed” advances the due date by the repeat interval. Recurring renewals roll forward into the Forecast even if the stored due date is in the past.</p>
+      </fieldset>
+    </form>
+    <table>
+      <thead><tr><th>Name</th><th>Type</th><th>Next due</th><th class="num">Cost</th><th>Doc note</th><th></th></tr></thead>
+      <tbody id="renewal-rows"></tbody>
+    </table>
+  </section>
+
+  <section class="panel" id="tab-forecast">
+    <h2 style="font-size:1.05rem">Big-expense forecast — next 12 months</h2>
+    <p class="hint">Sum of all renewals due in each month (recurring ones included), plus any warranted item renewal costs lapsing that month. Today: <span id="fc-today"></span></p>
+    <div class="card" id="forecast-view"></div>
+  </section>
+
+  <section class="panel" id="tab-export">
+    <p>Download everything as CSV (two files: <code>items.csv</code> and <code>renewals.csv</code>), useful for backups or spreadsheets.</p>
+    <div class="row-actions">
+      <button class="primary" id="btn-export">Download CSV files</button>
+    </div>
+    <p class="hint">CSVs are generated locally in your browser — nothing is uploaded.</p>
+  </section>
+
+  <p class="hint">Built by Asdale Dynamics, LLC — MIT licensed. Data is stored only in this browser’s localStorage; clearing browser data erases it.</p>
+</main>
+<script>
+/* == warranty-core.js is inlined here by build.js == */
+// BEGIN CORE
+// END CORE
+(function () {
+  'use strict';
+  var C = window.WarrantyCore;
+  var LS_W = 'wrt.items.v1', LS_R = 'wrt.renewals.v1';
+
+  function load(key, fallback) {
+    try { var raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; }
+    catch (e) { return fallback; }
+  }
+  function save(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {} }
+
+  var items = load(LS_W, []);
+  var renewals = load(LS_R, []);
+  var wSort = 'status';
+
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function statusBadge(days) {
+    var s = C.statusFromDays(days);
+    var names = { active: 'covered', upcoming: '90 days out', soon: 'expiring soon', expired: 'expired', none: 'no warranty' };
+    return '<span class="badge ' + s + '">' + names[s] + '</span>';
+  }
+
+  function daysFor(it) { return C.daysUntilExpiry(it.purchaseDate, it.months, it.days); }
+
+  /* ---------- warranties ---------- */
+  function fmtCountdown(days) {
+    if (days === null) return '—';
+    if (days < 0) return Math.abs(days) + ' day' + (Math.abs(days) === 1 ? '' : 's') + ' ago';
+    if (days === 0) return 'Expires today';
+    if (days === 1) return '1 day left';
+    return days + ' days left';
+  }
+  function renderWarranties() {
+    var list = items.slice();
+    list.sort(function (a, b) {
+      var da = daysFor(a), db = daysFor(b);
+      if (wSort === 'name') return (a.name || '').localeCompare(b.name || '');
+      if (wSort === 'expiry') return (da === null ? Infinity : da === undefined ? Infinity : da) - (db === null ? Infinity : db);
+      var rank = { expired: 0, soon: 1, upcoming: 2, active: 3, none: 4 };
+      return (rank[C.statusFromDays(da)] - rank[C.statusFromDays(db)]) || (da - db);
+    });
+    if (!list.length) {
+      $('warranty-list').innerHTML = '<div class="card"><em>No items yet — add your first appliance, car, or phone above.</em></div>';
+      return;
+    }
+    $('warranty-list').innerHTML = list.map(function (it) {
+      var days = daysFor(it);
+      var exp = C.expiryDate(it.purchaseDate, it.months, it.days);
+      var expStr = exp ? C.toISODate(exp) : 'n/a';
+      return '<div class="card" data-id="' + esc(it.id) + '">' +
+        '<h3>' + esc(it.name) + ' <span class="meta">(' + esc(it.type) + ')</span></h3>' +
+        '<p class="meta">Bought ' + esc(it.purchaseDate) + (it.months ? ' · ' + esc(it.months) + ' mo warranty' : '') + (it.days ? ' · ' + esc(it.days) + ' day warranty' : '') + '</p>' +
+        statusBadge(days) +
+        '<div class="countdown ' + C.statusFromDays(days) + '">' + fmtCountdown(days) + '</div>' +
+        '<p class="meta">Expires: ' + expStr + '</p>' +
+        (it.docLocation ? '<p class="meta">📄 Docs: ' + esc(it.docLocation) + '</p>' : '') +
+        '<div class="row-actions"><button class="ghost" data-act="edit-w">Edit</button><button class="ghost" data-act="del-w">Delete</button></div>' +
+        '</div>';
+    }).join('');
+    Array.prototype.forEach.call($('warranty-list').querySelectorAll('[data-act]'), function (btn) {
+      btn.addEventListener('click', function () {
+        var id = btn.closest('.card').getAttribute('data-id');
+        var it = items.find(function (x) { return x.id === id; });
+        if (!it) return;
+        if (btn.getAttribute('data-act') === 'del-w') {
+          if (confirm('Delete "' + it.name + '"?')) {
+            items = items.filter(function (x) { return x.id !== id; });
+            save(LS_W, items); renderWarranties(); renderForecast();
+          }
+        } else {
+          $('w-id').value = it.id; $('w-name').value = it.name; $('w-type').value = it.type;
+          $('w-purchase').value = it.purchaseDate; $('w-months').value = it.months || '';
+          $('w-days').value = it.days || ''; $('w-loc').value = it.docLocation || '';
+          $('w-renew').value = it.renewCost != null ? it.renewCost : '';
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      });
+    });
+  }
+
+  $('warranty-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var months = parseInt($('w-months').value, 10) || 0;
+    var days = parseInt($('w-days').value, 10) || 0;
+    if (!months && !days) { alert('Enter a warranty length in months or days (or leave it as "no warranty" by leaving both blank — then no countdown is tracked).'); return; }
+    if (!C.parseDate($('w-purchase').value)) { alert('Please pick a valid purchase date.'); return; }
+    var it = {
+      id: $('w-id').value || 'w' + Date.now(),
+      name: $('w-name').value.trim(),
+      type: $('w-type').value,
+      purchaseDate: $('w-purchase').value,
+      months: months, days: days,
+      docLocation: $('w-loc').value.trim(),
+      renewCost: parseFloat($('w-renew').value) || null
+    };
+    items = items.filter(function (x) { return x.id !== it.id; });
+    items.push(it);
+    save(LS_W, items);
+    $('warranty-form').reset(); $('w-id').value = '';
+    renderWarranties(); renderForecast(); renderRenewals();
+  });
+  $('w-clear').addEventListener('click', function () { $('warranty-form').reset(); $('w-id').value = ''; });
+
+  Array.prototype.forEach.call(document.querySelectorAll('[data-wsort]'), function (btn) {
+    btn.addEventListener('click', function () { wSort = btn.getAttribute('data-wsort'); renderWarranties(); });
+  });
+
+  /* ---------- renewals ---------- */
+  function renderRenewals() {
+    var rows = renewals.slice().sort(function (a, b) { return (a.dueDate || '').localeCompare(b.dueDate || ''); });
+    if (!rows.length) {
+      $('renewal-rows').innerHTML = '<tr><td colspan="6"><em>No renewals yet — insurance, memberships, and service plans go here.</em></td></tr>';
+      return;
+    }
+    var today = new Date();
+    $('renewal-rows').innerHTML = rows.map(function (r) {
+      var due = C.parseDate(r.dueDate);
+      var dleft = due ? C.daysBetween(today, due) : Infinity;
+      var cls = dleft < 0 ? 'expired' : (dleft <= 30 ? 'soon' : (dleft <= 90 ? 'upcoming' : 'active'));
+      var intervalTxt = (r.intervalMonths ? 'every ' + r.intervalMonths + ' mo' : 'one-time');
+      return '<tr><td><strong>' + esc(r.name) + '</strong><br><span class="meta">' + intervalTxt + '</span></td>' +
+        '<td>' + esc(r.type) + '</td>' +
+        '<td>' + esc(r.dueDate) + '<br><span class="badge ' + cls + '">' + (dleft < 0 ? Math.abs(dleft) + 'd overdue' : dleft + 'd left') + '</span></td>' +
+        '<td class="num">' + (r.cost ? '$' + (+r.cost).toFixed(2) : '—') + '</td>' +
+        '<td>' + esc(r.note || '') + '</td>' +
+        '<td class="row-actions"><button class="ghost" data-act="renew" data-id="' + esc(r.id) + '">Mark renewed</button> ' +
+        '<button class="ghost" data-act="edit-r" data-id="' + esc(r.id) + '">Edit</button> ' +
+        '<button class="ghost" data-act="del-r" data-id="' + esc(r.id) + '">Del</button></td></tr>';
+    }).join('');
+    Array.prototype.forEach.call($('renewal-rows').querySelectorAll('button[data-act]'), function (btn) {
+      var id = btn.getAttribute('data-id');
+      var act = btn.getAttribute('data-act');
+      btn.addEventListener('click', function () {
+        var r = renewals.find(function (x) { return x.id === id; });
+        if (!r) return;
+        if (act === 'del-r') {
+          if (confirm('Delete "' + r.name + '"?')) {
+            renewals = renewals.filter(function (x) { return x.id !== id; });
+            save(LS_R, renewals); renderRenewals(); renderForecast();
+          }
+        } else if (act === 'edit-r') {
+          $('r-id').value = r.id; $('r-name').value = r.name; $('r-type').value = r.type;
+          $('r-due').value = r.dueDate; $('r-cost').value = r.cost != null ? r.cost : '';
+          $('r-interval').value = r.intervalMonths || ''; $('r-note').value = r.note || '';
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else if (act === 'renew') {
+          var next = C.nextDueAfter(r.dueDate, r.intervalMonths || 0);
+          if (!next) { alert('Set a repeat interval (in months) first — one-time items have no next due date.'); return; }
+          r.dueDate = C.toISODate(next);
+          save(LS_R, renewals); renderRenewals(); renderForecast();
+        }
+      });
+    });
+  }
+
+  $('renewal-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (!C.parseDate($('r-due').value)) { alert('Please pick a valid due date.'); return; }
+    var r = {
+      id: $('r-id').value || 'r' + Date.now(),
+      name: $('r-name').value.trim(),
+      type: $('r-type').value,
+      dueDate: $('r-due').value,
+      cost: parseFloat($('r-cost').value) || null,
+      intervalMonths: parseInt($('r-interval').value, 10) || null,
+      note: $('r-note').value.trim()
+    };
+    renewals = renewals.filter(function (x) { return x.id !== r.id; });
+    renewals.push(r);
+    save(LS_R, renewals);
+    $('renewal-form').reset(); $('r-id').value = '';
+    renderRenewals(); renderForecast();
+  });
+  $('r-clear').addEventListener('click', function () { $('renewal-form').reset(); $('r-id').value = ''; });
+
+  /* ---------- forecast ---------- */
+  function renderForecast() {
+    var warrantyAsRenewals = items
+      .filter(function (it) { return it.renewCost && it.renewCost > 0; })
+      .map(function (it) {
+        var exp = C.expiryDate(it.purchaseDate, it.months, it.days);
+        return exp ? { name: it.name + ' (warranty lapse)', cost: it.renewCost, dueDate: C.toISODate(exp), intervalMonths: null } : null;
+      })
+      .filter(Boolean);
+    var fc = C.forecastByMonth(renewals.concat(warrantyAsRenewals));
+    $('fc-today').textContent = C.toISODate(new Date());
+    var grand = C.totalForecast(fc);
+    $('forecast-view').innerHTML =
+      fc.map(function (b) {
+        var details = b.items.length ? b.items.map(esc).join(' · ') : '';
+        var cls = b.total > 0 ? '' : ' empty';
+        return '<div class="forecast-month' + cls + '"><span>' + esc(b.label) + (details ? '<br><span class="meta">' + details + '</span>' : '') + '</span><strong>' + (b.total ? '$' + b.total.toFixed(2) : '—') + '</strong></div>';
+      }).join('') +
+      '<div class="forecast-month"><span><strong>12-month total</strong></span><strong>$' + grand.toFixed(2) + '</strong></div>';
+  }
+
+  /* ---------- CSV export ---------- */
+  function csvCell(v) {
+    v = v == null ? '' : String(v);
+    if (/[",\n]/.test(v)) v = '"' + v.replace(/"/g, '""') + '"';
+    return v;
+  }
+  function toCSV(rows, headers) {
+    return headers.map(csvCell).join(',') + '\n' + rows.map(function (r) {
+      return headers.map(function (h) { return csvCell(r[h]); }).join(',');
+    }).join('\n') + '\n';
+  }
+  $('btn-export').addEventListener('click', function () {
+    var t = C.toISODate(new Date()).replace(/-/g, '');
+    var itemsCSV = toCSV(items, ['name', 'type', 'purchaseDate', 'months', 'days', 'docLocation', 'renewCost']);
+    var renCSV = toCSV(renewals, ['name', 'type', 'dueDate', 'cost', 'intervalMonths', 'note']);
+    download('warranty-items-' + t + '.csv', itemsCSV);
+    download('renewals-' + t + '.csv', renCSV);
+  });
+  function download(name, text) {
+    var blob = new Blob([text], { type: 'text/csv' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 100);
+  }
+
+  /* ---------- tabs ---------- */
+  Array.prototype.forEach.call(document.querySelectorAll('nav.tabs button'), function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('nav.tabs button').forEach(function (b) { b.classList.remove('active'); });
+      document.querySelectorAll('section.panel').forEach(function (p) { p.classList.remove('active'); });
+      btn.classList.add('active');
+      $('tab-' + btn.getAttribute('data-tab')).classList.add('active');
+    });
+  });
+
+  /* demo seed — only on a truly empty install, easily deleted */
+  if (!localStorage.getItem(LS_W) && !localStorage.getItem(LS_R) && confirm('First run: add a few sample items so you can see how it works? (You can delete them right after.)')) {
+    items = [
+      { id: 'sd1', name: 'Kitchen fridge', type: 'Appliance', purchaseDate: '2026-02-10', months: 12, days: 0, docLocation: 'kitchen drawer, envelope A', renewCost: 89.99 },
+      { id: 'sd2', name: 'Honda Civic', type: 'Car', purchaseDate: '2026-01-15', months: 36, days: 0, docLocation: 'glovebox folder', renewCost: null },
+      { id: 'sd3', name: 'iPhone', type: 'Phone', purchaseDate: '2026-05-01', months: 0, days: 365, docLocation: 'receipts box upstairs', renewCost: 129 }
+    ];
+    renewals = [
+      { id: 'sd4', name: 'Car insurance', type: 'Insurance', dueDate: '2026-11-05', cost: 120, intervalMonths: 1, note: 'policy in email, folder Auto' },
+      { id: 'sd5', name: 'Warehouse membership', type: 'Membership', dueDate: '2026-12-01', cost: 65, intervalMonths: 12, note: 'card in wallet' }
+    ];
+    save(LS_W, items); save(LS_R, renewals);
+  }
+
+  renderWarranties(); renderRenewals(); renderForecast();
+})();
+</script>
+</body>
+</html>
